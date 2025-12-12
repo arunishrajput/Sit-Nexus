@@ -22,3 +22,20 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Local env files (NEVER commit these)
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Node modules, build output
+node_modules/
+dist/
+.build/
+.next/
+
+# If you have firebase functions local env
+functions/.runtimeconfig.json
+functions/.env
