@@ -18,14 +18,17 @@ export const Analysis: React.FC<AnalysisProps> = ({ currentUser }) => {
   const [hasData, setHasData] = useState(false);
 
   useEffect(() => {
-    const logs = StorageService.getUserActivityLogs(currentUser.id);
-    setHasData(logs.length > 5);
+    const checkData = async () => {
+        const logs = await StorageService.getUserActivityLogs(currentUser.id);
+        setHasData(logs.length > 5);
+    };
+    checkData();
   }, [currentUser.id]);
 
   const handleAnalyze = async () => {
     setLoading(true);
     try {
-      const logs = StorageService.getUserActivityLogs(currentUser.id);
+      const logs = await StorageService.getUserActivityLogs(currentUser.id);
       if (logs.length < 5) {
          alert("Not enough data yet! Try using the app more or inject Demo Data in Admin.");
          setLoading(false);

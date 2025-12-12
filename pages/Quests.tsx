@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { User, UserQuest, Badge as BadgeType, Quest } from '../types';
 import { StorageService } from '../services/storage';
@@ -18,25 +19,31 @@ export const Quests: React.FC<QuestsProps> = ({ currentUser }) => {
   const [xpFloat, setXpFloat] = useState<{ val: number, id: string } | null>(null);
 
   useEffect(() => {
-    // 1. Ensure Quests are assigned
-    StorageService.assignDailyQuests(currentUser.id);
-    
-    // 2. Load Quests
-    const quests = StorageService.getUserQuests(currentUser.id);
-    setUserQuests(quests);
+    const loadQuests = async () => {
+        // 1. Ensure Quests are assigned
+        await StorageService.assignDailyQuests(currentUser.id);
+        
+        // 2. Load Quests
+        const quests = await StorageService.getUserQuests(currentUser.id);
+        setUserQuests(quests);
+    };
+    loadQuests();
   }, [currentUser.id]);
 
   const handleVerify = (userQuestId: string) => {
     setLoadingVerify(userQuestId);
     
     // Simulate API delay / Processing
-    setTimeout(() => {
-        const result = StorageService.verifyQuest(currentUser, userQuestId);
+    setTimeout(async () => {
+        const result = await StorageService.verifyQuest(currentUser, userQuestId);
         
         if (result.success) {
             // Trigger Animation
             setConfetti(true);
-            const questXp = QUESTS.find(q => q.id === userQuests.find(uq => uq.id === userQuestId)?.questId)?.xp || 0;
+            const updatedQuests = await StorageService.getUserQuests(currentUser.id);
+            const uq = updatedQuests.find(u => u.id === userQuestId);
+            const questXp = QUESTS.find(q => q.id === uq?.questId)?.xp || 0;
+
             setXpFloat({ val: questXp, id: userQuestId });
             setTimeout(() => {
                 setConfetti(false);
@@ -44,7 +51,7 @@ export const Quests: React.FC<QuestsProps> = ({ currentUser }) => {
             }, 3000);
             
             // Reload State
-            setUserQuests(StorageService.getUserQuests(currentUser.id));
+            setUserQuests(updatedQuests);
         } else {
             alert(result.message);
         }

@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { User, Message, Meetup, LocationId } from '../types';
@@ -30,32 +31,29 @@ export const Chat: React.FC<ChatProps> = ({ currentUser, view = 'room' }) => {
   const [aiSuggestions, setAiSuggestions] = useState<string[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
-  // Initialize Data
+  // Initialize Users List for DMs
   useEffect(() => {
-    setUsers(StorageService.getUsers().filter(u => u.id !== currentUser.id));
+    const fetchUsers = async () => {
+        const u = await StorageService.getUsers();
+        setUsers(u.filter(user => user.id !== currentUser.id));
+    };
+    fetchUsers();
   }, [currentUser.id]);
 
   useEffect(() => {
     if (!roomId) return;
 
-    // Load messages immediately
-    const msgs = StorageService.getMessages(roomId);
-    setMessages(msgs);
-    
-    // Load Meetups if it's a location
+    // Load Meetups if it's a location (Async)
     if (Object.values(LocationId).includes(roomId as LocationId)) {
-        setMeetups(StorageService.getMeetups(roomId));
+        StorageService.getMeetups(roomId).then(setMeetups);
     }
 
-    // Polling for demo "real-time" (Simulating socket)
-    const interval = setInterval(() => {
-      const latest = StorageService.getMessages(roomId);
-      if (latest.length !== msgs.length) {
-         setMessages(latest);
-      }
-    }, 2000);
+    // Subscribe to Real-Time Messages
+    const unsubscribe = StorageService.subscribeToMessages(roomId, (msgs) => {
+      setMessages(msgs);
+    });
 
-    return () => clearInterval(interval);
+    return () => unsubscribe();
   }, [roomId]);
 
   // Scroll to bottom on new message
@@ -79,11 +77,11 @@ export const Chat: React.FC<ChatProps> = ({ currentUser, view = 'room' }) => {
     };
 
     StorageService.sendMessage(newMessage);
-    setMessages([...messages, newMessage]);
+    // Optimistic update not needed as listener will catch it, but feels snappier
     setInputText('');
   };
 
-  const handleCreateMeetup = () => {
+  const handleCreateMeetup = async () => {
     if (!newMeetupTitle || !newMeetupTime || !roomId) return;
     
     const meetup: Meetup = {
@@ -97,8 +95,8 @@ export const Chat: React.FC<ChatProps> = ({ currentUser, view = 'room' }) => {
       participants: [currentUser.id]
     };
     
-    StorageService.createMeetup(meetup);
-    setMeetups([...meetups, meetup]);
+    await StorageService.createMeetup(meetup);
+    setMeetups(prev => [...prev, meetup]);
     setShowMeetupModal(false);
     
     // Announce in chat
@@ -112,7 +110,6 @@ export const Chat: React.FC<ChatProps> = ({ currentUser, view = 'room' }) => {
       readBy: []
     };
     StorageService.sendMessage(announcement);
-    setMessages(prev => [...prev, announcement]);
   };
 
   const getAiSuggestions = async () => {

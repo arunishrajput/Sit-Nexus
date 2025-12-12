@@ -20,10 +20,11 @@ const NexusLogoLarge = () => (
 
 export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
   const [isLogin, setIsLogin] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     username: '',
-    password: '', // In a real app, hash this!
+    password: '',
     name: '',
     department: DEPARTMENTS[0],
     year: YEARS[0],
@@ -35,51 +36,38 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
     setError('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLogin) {
-      const users = StorageService.getUsers();
-      const user = users.find(u => u.email === formData.email || u.username === formData.email);
-      if (user) {
-        // Password check omitted for mock simplicity
+    setLoading(true);
+    setError('');
+
+    try {
+      if (isLogin) {
+        const user = await StorageService.login(formData.email, formData.password);
         onLogin(user);
       } else {
-        setError('User not found. Please sign up first.');
-      }
-    } else {
-      if (!formData.email || !formData.username || !formData.name) {
-        setError('Please fill in all required fields.');
-        return;
-      }
+        if (!formData.email || !formData.username || !formData.name || !formData.password) {
+          setError('Please fill in all required fields.');
+          setLoading(false);
+          return;
+        }
 
-      // Check for existing user
-      const users = StorageService.getUsers();
-      const existingUser = users.find(u => 
-        u.email.toLowerCase() === formData.email.toLowerCase() || 
-        u.username.toLowerCase() === formData.username.toLowerCase()
-      );
-
-      if (existingUser) {
-        setError('User with this email or username already exists. Please login.');
-        return;
+        const user = await StorageService.signup(formData.email, formData.password, {
+          username: formData.username,
+          name: formData.name,
+          department: formData.department,
+          year: formData.year,
+          bio: 'I am new here!',
+          interests: [],
+          avatarUrl: `https://ui-avatars.com/api/?name=${formData.name}&background=random`,
+        });
+        onLogin(user);
       }
-
-      const newUser: User = {
-        id: crypto.randomUUID(),
-        email: formData.email,
-        username: formData.username,
-        name: formData.name,
-        department: formData.department,
-        year: formData.year,
-        bio: 'I am new here!',
-        interests: [],
-        avatarUrl: `https://ui-avatars.com/api/?name=${formData.name}&background=random`,
-        xp: 0,
-        level: 1,
-        badges: []
-      };
-      StorageService.saveUser(newUser);
-      onLogin(newUser);
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Authentication failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -117,10 +105,10 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input 
-            label={isLogin ? "Email or Username" : "Email"}
+            label="Email"
             name="email"
-            type="text" 
-            placeholder={isLogin ? "student@sit.edu" : "student@sit.edu"}
+            type="email" 
+            placeholder="student@sit.edu"
             value={formData.email}
             onChange={handleChange}
             required
@@ -180,9 +168,11 @@ export const Auth: React.FC<AuthProps> = ({ onLogin }) => {
             placeholder="••••••••"
             value={formData.password}
             onChange={handleChange}
+            required
+            minLength={6}
           />
 
-          <Button type="submit" className="w-full mt-2">
+          <Button type="submit" className="w-full mt-2" isLoading={loading}>
             {isLogin ? 'Login' : 'Create Account'}
           </Button>
         </form>

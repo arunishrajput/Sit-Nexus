@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { Meetup, LocationId, User } from '../types';
 import { StorageService } from '../services/storage';
@@ -17,8 +18,11 @@ export const Feed: React.FC<FeedProps> = ({ currentUser }) => {
   const [filter, setFilter] = useState('');
 
   useEffect(() => {
-    const all = StorageService.getMeetups();
-    setMeetups(all.sort((a, b) => a.startTime - b.startTime));
+    const fetchMeetups = async () => {
+        const all = await StorageService.getMeetups();
+        setMeetups(all.sort((a, b) => a.startTime - b.startTime));
+    };
+    fetchMeetups();
   }, []);
 
   const filteredMeetups = meetups.filter(m => 
@@ -26,10 +30,10 @@ export const Feed: React.FC<FeedProps> = ({ currentUser }) => {
       m.description.toLowerCase().includes(filter.toLowerCase())
   );
 
-  const handleJoin = (meetupId: string) => {
-    StorageService.joinMeetup(meetupId, currentUser.id);
-    const updated = StorageService.getMeetups().sort((a, b) => a.startTime - b.startTime);
-    setMeetups(updated);
+  const handleJoin = async (meetupId: string) => {
+    await StorageService.joinMeetup(meetupId, currentUser.id);
+    const updated = await StorageService.getMeetups();
+    setMeetups(updated.sort((a, b) => a.startTime - b.startTime));
     
     // Redirect to the chat room
     const m = updated.find(x => x.id === meetupId);

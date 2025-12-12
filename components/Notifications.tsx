@@ -1,8 +1,8 @@
-import React from 'react';
+
+import React, { useEffect } from 'react';
 import { Notification } from '../types';
 import { StorageService } from '../services/storage';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 interface NotificationsProps {
@@ -15,13 +15,12 @@ export const NotificationDropdown: React.FC<NotificationsProps> = ({ notificatio
 
   const handleClick = (note: Notification) => {
     StorageService.markNotificationRead(note.id);
-    onRead(); // Refresh parent state
+    // Notification will disappear automatically via onSnapshot
     if (note.link) navigate(note.link);
   };
 
   const markAllRead = () => {
     notifications.forEach(n => StorageService.markNotificationRead(n.id));
-    onRead();
   };
 
   if (notifications.length === 0) {

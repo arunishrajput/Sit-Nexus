@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { User, MoodMatch } from '../types';
 import { StorageService } from '../services/storage';
@@ -17,10 +18,13 @@ export const VibeCheck: React.FC<VibeCheckProps> = ({ currentUser }) => {
   const [matches, setMatches] = useState<MoodMatch[]>([]);
   
   useEffect(() => {
-    if (selectedMoodId) {
-       const results = StorageService.getMoodMatches(currentUser.id);
-       setMatches(results);
-    }
+    const fetchMatches = async () => {
+        if (selectedMoodId) {
+            const results = await StorageService.getMoodMatches(currentUser.id);
+            setMatches(results);
+        }
+    };
+    fetchMatches();
   }, [currentUser.id, selectedMoodId]);
 
   const handleSetMood = (moodId: string) => {

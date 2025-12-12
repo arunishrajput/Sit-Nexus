@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { User, MysteryMeetup, MysteryStatus } from '../types';
 import { StorageService } from '../services/storage';
@@ -20,12 +21,12 @@ export const Mystery: React.FC<MysteryProps> = ({ currentUser }) => {
 
   // Polling for updates
   useEffect(() => {
-    const fetchMatch = () => {
-      const active = StorageService.findMysteryMatch(currentUser.id); // Re-checks existing active
+    const fetchMatch = async () => {
+      const active = await StorageService.findMysteryMatch(currentUser.id); // Re-checks existing active
       if (active) {
         setMatch(active);
         const partnerId = active.userAId === currentUser.id ? active.userBId : active.userAId;
-        const users = StorageService.getUsers();
+        const users = await StorageService.getUsers();
         setPartner(users.find(u => u.id === partnerId) || null);
       }
     };
@@ -63,8 +64,8 @@ export const Mystery: React.FC<MysteryProps> = ({ currentUser }) => {
     setError('');
     
     // Simulate delay for "Searching" animation
-    setTimeout(() => {
-      const newMatch = StorageService.findMysteryMatch(currentUser.id);
+    setTimeout(async () => {
+      const newMatch = await StorageService.findMysteryMatch(currentUser.id);
       if (!newMatch) {
         setLoading(false);
         setError("Not enough explorers online right now. Try again later!");
@@ -72,14 +73,14 @@ export const Mystery: React.FC<MysteryProps> = ({ currentUser }) => {
         // Match found!
         setMatch(newMatch);
         const partnerId = newMatch.userAId === currentUser.id ? newMatch.userBId : newMatch.userAId;
-        const users = StorageService.getUsers();
+        const users = await StorageService.getUsers();
         setPartner(users.find(u => u.id === partnerId) || null);
         setLoading(false);
       }
     }, 2000);
   };
 
-  const handleAction = (action: 'accept' | 'decline' | 'arrive') => {
+  const handleAction = async (action: 'accept' | 'decline' | 'arrive') => {
     if (!match) return;
     
     let newStatus: MysteryStatus = match.status;
@@ -87,8 +88,8 @@ export const Mystery: React.FC<MysteryProps> = ({ currentUser }) => {
     if (action === 'accept') {
        newStatus = 'accepted';
        // Mock: Simulate partner accepting after 3s
-       setTimeout(() => {
-          if (match) StorageService.updateMysteryStatus(match.id, 'accepted');
+       setTimeout(async () => {
+          if (match) await StorageService.updateMysteryStatus(match.id, 'accepted');
        }, 3000);
     } else if (action === 'decline') {
        newStatus = 'declined';
@@ -97,19 +98,19 @@ export const Mystery: React.FC<MysteryProps> = ({ currentUser }) => {
        newStatus = isA ? 'arrived_a' : 'arrived_b';
        
        // Mock: Simulate partner arriving after 5s if accepted
-       setTimeout(() => {
+       setTimeout(async () => {
           if (match) {
-             const updated = StorageService.getMysteryMeetups().find(m => m.id === match.id);
-             if (updated && updated.status !== 'completed') {
+             const updated = await StorageService.findMysteryMatch(currentUser.id);
+             if (updated && updated.id === match.id && updated.status !== 'completed') {
                 const partnerArriveStatus = isA ? 'arrived_b' : 'arrived_a';
-                StorageService.updateMysteryStatus(match.id, partnerArriveStatus);
+                await StorageService.updateMysteryStatus(match.id, partnerArriveStatus);
              }
           }
        }, 5000);
     }
 
-    const updated = StorageService.updateMysteryStatus(match.id, newStatus);
-    setMatch(updated);
+    await StorageService.updateMysteryStatus(match.id, newStatus);
+    setMatch({ ...match, status: newStatus });
   };
 
   // --- Render States ---

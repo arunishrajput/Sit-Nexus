@@ -22,8 +22,7 @@ import {
   Moon,
   Sun,
   Brain,
-  Database,
-  Hexagon
+  Database
 } from 'lucide-react';
 
 interface LayoutProps {
@@ -50,7 +49,8 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout,
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isDemoMode = StorageService.isDemoMode();
+  // Firebase integration removes "demo mode" in the traditional sense
+  const isDemoMode = false; 
 
   const navItems = [
     { label: 'Dashboard', icon: <Home size={20} />, path: '/dashboard' },
@@ -65,19 +65,15 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout,
     { label: 'Profile', icon: <UserIcon size={20} />, path: '/profile' },
   ];
 
-  // Poll for notifications
-  const refreshNotifications = () => {
-    const all = StorageService.getNotifications(currentUser.id);
-    setNotifications(all);
-  };
-
+  // Poll for notifications using Firestore Listener
   useEffect(() => {
-    refreshNotifications();
-    const interval = setInterval(refreshNotifications, 5000);
-    return () => clearInterval(interval);
+    const unsubscribe = StorageService.subscribeToNotifications(currentUser.id, (notes) => {
+      setNotifications(notes.filter(n => !n.read));
+    });
+    return () => unsubscribe();
   }, [currentUser.id]);
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.length;
 
   const getPageTitle = () => {
     if (location.pathname.startsWith('/chat')) return 'Chat';
@@ -158,15 +154,6 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout,
 
       {/* Mobile Header & Overlay */}
       <div className="flex-1 flex flex-col h-full w-full">
-        {/* DEMO BANNER */}
-        {isDemoMode && (
-          <div className="bg-indigo-600 text-white text-xs font-bold py-1 px-4 text-center flex items-center justify-center gap-2">
-            <Database size={12} />
-            <span>DEMO MODE ACTIVE</span>
-            <button onClick={() => navigate('/admin')} className="underline ml-2 hover:text-indigo-200">Turn Off</button>
-          </div>
-        )}
-
         <header className="h-16 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 flex items-center justify-between px-4 z-20 shrink-0 transition-colors">
           <div className="md:hidden flex items-center gap-2">
              <button onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} className="p-2 text-gray-600 dark:text-slate-300">
@@ -199,7 +186,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, currentUser, onLogout,
                 )}
               </button>
               {showNotifications && (
-                <NotificationDropdown notifications={notifications} onRead={refreshNotifications} />
+                <NotificationDropdown notifications={notifications} onRead={() => {}} />
               )}
             </div>
           </div>

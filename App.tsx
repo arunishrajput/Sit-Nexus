@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { User } from './types';
 import { StorageService } from './services/storage';
+import { auth } from './services/firebase'; // Import Firebase Auth
+import { onAuthStateChanged } from 'firebase/auth';
 import { Auth } from './pages/Auth';
 import { Layout } from './components/Layout';
 import { Dashboard } from './pages/Dashboard';
@@ -40,22 +42,27 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    const init = async () => {
-      // Simulate checking session
-      const storedUser = StorageService.getCurrentUser();
-      if (storedUser) {
-        setCurrentUser(storedUser);
+    // Listen for Firebase Auth state changes
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const userProfile = await StorageService.getUser(firebaseUser.uid);
+          setCurrentUser(userProfile);
+        } catch (e) {
+          console.error("Failed to fetch user profile", e);
+          setCurrentUser(null);
+        }
       } else {
-        // Initialize dummy data if first time
-        StorageService.initDummyData();
+        setCurrentUser(null);
       }
       setLoading(false);
-    };
-    init();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleLogin = (user: User) => {
-    StorageService.setCurrentUser(user);
+    // State is handled by onAuthStateChanged, but we can set it optimistically
     setCurrentUser(user);
   };
 

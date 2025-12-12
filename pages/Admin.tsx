@@ -27,7 +27,11 @@ export const Admin: React.FC = () => {
   });
 
   useEffect(() => {
-    setReports(StorageService.getReports());
+    const fetchReports = async () => {
+        const data = await StorageService.getReports();
+        setReports(data);
+    };
+    fetchReports();
   }, []);
 
   const resolveReport = (id: string) => {

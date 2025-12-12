@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { User, Meetup, LocationId } from '../types';
 import { StorageService } from '../services/storage';
@@ -17,18 +18,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ currentUser }) => {
 
   useEffect(() => {
     // Get recent meetups
-    const allMeetups = StorageService.getMeetups();
-    const upcoming = allMeetups
-      .filter(m => m.startTime > Date.now())
-      .sort((a, b) => a.startTime - b.startTime)
-      .slice(0, 3);
-    setMeetups(upcoming);
+    const fetchMeetups = async () => {
+      const allMeetups = await StorageService.getMeetups();
+      const upcoming = allMeetups
+        .filter(m => m.startTime > Date.now())
+        .sort((a, b) => a.startTime - b.startTime)
+        .slice(0, 3);
+      setMeetups(upcoming);
+    };
+    fetchMeetups();
   }, []);
 
   const handleLocationSelect = (locId: string) => {
     const updatedUser = { ...currentUser, currentLocationId: locId };
     StorageService.saveUser(updatedUser);
-    // Force reload/update in parent usually happens via callback, but here we assume storage sync or simple nav
     navigate(`/chat/${locId}`);
   };
 

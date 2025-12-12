@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { User, LocationId } from '../types';
+import { User, LocationId, Connection } from '../types';
 import { StorageService } from '../services/storage';
 import { LOCATIONS } from '../constants';
 import { Card, Button, Badge, Input, Modal } from '../components/ui';
@@ -16,6 +16,7 @@ export const People: React.FC<PeopleProps> = ({ currentUser }) => {
   const [activeTab, setActiveTab] = useState<'all' | 'nearby'>('all');
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
+  const [connections, setConnections] = useState<Connection[]>([]);
   const [search, setSearch] = useState('');
   
   // Reporting state
@@ -24,9 +25,17 @@ export const People: React.FC<PeopleProps> = ({ currentUser }) => {
   const [reportReason, setReportReason] = useState('');
 
   useEffect(() => {
-    const allUsers = StorageService.getUsers().filter(u => u.id !== currentUser.id);
-    setUsers(allUsers);
-    filterUsers(allUsers, activeTab, search);
+    const fetchData = async () => {
+      const allUsers = await StorageService.getUsers();
+      const others = allUsers.filter(u => u.id !== currentUser.id);
+      setUsers(others);
+      
+      const userConnections = await StorageService.getConnections(currentUser.id);
+      setConnections(userConnections);
+
+      filterUsers(others, activeTab, search);
+    };
+    fetchData();
   }, [currentUser, activeTab]);
 
   const filterUsers = (all: User[], tab: string, searchTerm: string) => {
@@ -58,29 +67,34 @@ export const People: React.FC<PeopleProps> = ({ currentUser }) => {
   };
 
   const getConnection = (otherUserId: string) => {
-    const all = StorageService.getConnections();
-    return all.find(c => 
+    return connections.find(c => 
       (c.requesterId === currentUser.id && c.receiverId === otherUserId) || 
       (c.requesterId === otherUserId && c.receiverId === currentUser.id)
     );
   };
 
-  const handleConnect = (otherUserId: string) => {
-    StorageService.sendConnectionRequest(currentUser.id, otherUserId);
-    setUsers([...users]); // Force re-render
-    filterUsers(users, activeTab, search);
+  const handleConnect = async (otherUserId: string) => {
+    await StorageService.sendConnectionRequest(currentUser.id, otherUserId);
+    const updated = await StorageService.getConnections(currentUser.id);
+    setConnections(updated);
   };
 
-  const handleAccept = (otherUserId: string) => {
-    StorageService.updateConnectionStatus(otherUserId, currentUser.id, 'accepted');
-    setUsers([...users]);
-    filterUsers(users, activeTab, search);
+  const handleAccept = async (otherUserId: string) => {
+    const conn = getConnection(otherUserId);
+    if (conn) {
+      await StorageService.updateConnectionStatus(conn.id, 'accepted');
+      const updated = await StorageService.getConnections(currentUser.id);
+      setConnections(updated);
+    }
   };
 
-  const handleDecline = (otherUserId: string) => {
-    StorageService.updateConnectionStatus(otherUserId, currentUser.id, 'rejected');
-    setUsers([...users]);
-    filterUsers(users, activeTab, search);
+  const handleDecline = async (otherUserId: string) => {
+    const conn = getConnection(otherUserId);
+    if (conn) {
+      await StorageService.updateConnectionStatus(conn.id, 'rejected');
+      const updated = await StorageService.getConnections(currentUser.id);
+      setConnections(updated);
+    }
   };
 
   const handleMessage = (otherUserId: string) => {
